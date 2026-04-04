@@ -1,0 +1,78 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id Int @id @default(autoincrement())
+  name String
+  email String @unique
+  passwordHash String
+  role Role
+  service Service?
+  appointment Appointment[]
+  createdAt DateTime @default(now())
+}
+
+model Service {
+  id Int @id @default(autoincrement())
+  name String
+  type Type 
+  user User @relation(fields: [providerId], references: [id])
+  providerId Int @unique
+  durationMinutes Int
+  availability Availability[]
+  appointment Appointment[]
+  createdAt DateTime @default(now())
+} 
+
+model Availability {
+  id Int @id @default(autoincrement())
+  service Service @relation(fields: [serviceId], references: [id])
+  serviceId Int 
+  dayOfWeek Int
+  startTime DateTime @db.Time(0)
+  endTime DateTime @db.Time(0)
+}
+
+model Appointment {
+  id Int @id @default(autoincrement())
+  user User @relation(fields: [userId], references: [id])
+  service Service @relation(fields: [serviceId], references: [id])
+  userId Int  
+  serviceId Int
+  date DateTime @db.Date 
+  startTime DateTime @db.Time(0)
+  endTime DateTime @db.Time(0)
+  slotId String
+  status Status
+  createdAt DateTime @default(now())
+} 
+
+enum Role {
+  USER
+  SERVICE_PROVIDER
+}
+
+enum Type {
+  MEDICAL
+  HOUSE_HELP
+  BEAUTY
+  FITNESS
+  EDUCATION
+  OTHER
+}
+
+enum Status {
+  BOOKED
+  CANCELLED
+}
