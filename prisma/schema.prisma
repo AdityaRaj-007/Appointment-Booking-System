@@ -24,7 +24,7 @@ model User {
 }
 
 model Service {
-  id Int @id @default(autoincrement())
+  id String @id @default(uuid())
   name String
   type Type 
   user User @relation(fields: [providerId], references: [id])
@@ -36,20 +36,20 @@ model Service {
 } 
 
 model Availability {
-  id Int @id @default(autoincrement())
+  id String @id @default(uuid())
   service Service @relation(fields: [serviceId], references: [id])
-  serviceId Int 
+  serviceId String 
   dayOfWeek Int
   startTime DateTime @db.Time(0)
   endTime DateTime @db.Time(0)
 }
 
 model Appointment {
-  id Int @id @default(autoincrement())
+  id String @id @default(uuid())
   user User @relation(fields: [userId], references: [id])
   service Service @relation(fields: [serviceId], references: [id])
   userId Int  
-  serviceId Int
+  serviceId String
   date DateTime @db.Date 
   startTime DateTime @db.Time(0)
   endTime DateTime @db.Time(0)
