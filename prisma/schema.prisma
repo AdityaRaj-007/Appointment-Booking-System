@@ -40,8 +40,8 @@ model Availability {
   service Service @relation(fields: [serviceId], references: [id])
   serviceId String 
   dayOfWeek Int
-  startTime DateTime @db.Time(0)
-  endTime DateTime @db.Time(0)
+  startTime String 
+  endTime String 
 }
 
 model Appointment {
@@ -51,8 +51,8 @@ model Appointment {
   userId Int  
   serviceId String
   date DateTime @db.Date 
-  startTime DateTime @db.Time(0)
-  endTime DateTime @db.Time(0)
+  startTime String 
+  endTime String 
   slotId String
   status Status
   createdAt DateTime @default(now())

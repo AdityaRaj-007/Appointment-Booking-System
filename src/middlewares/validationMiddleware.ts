@@ -1,15 +1,34 @@
 import { NextFunction, Response, Request } from "express";
 import { ZodType } from "zod";
 
-export const validate =
-  (schema: ZodType) => (req: Request, res: Response, next: NextFunction) => {
-    const result = schema.safeParse(req.body);
-    console.log(result);
+type ValidationSchema = {
+  body?: ZodType<any>;
+  query?: ZodType<any>;
+};
 
-    if (!result.success) {
-      return res.status(400).json({ error: "Invalid input" });
+export const validate =
+  (schemas: ValidationSchema) =>
+  (req: Request, res: Response, next: NextFunction) => {
+    if (schemas.body) {
+      const bodyResult = schemas.body.safeParse(req.body);
+      if (!bodyResult.success) {
+        return res.status(400).json({
+          error: bodyResult.error.flatten(),
+        });
+      }
+      req.body = bodyResult.data;
     }
 
-    req.body = result.data;
+    if (schemas.query) {
+      const queryResult = schemas.query.safeParse(req.query);
+      if (!queryResult.success) {
+        return res.status(400).json({
+          error: queryResult.error.issues,
+        });
+      }
+      console.log(queryResult);
+      res.locals.query = queryResult.data;
+    }
+
     next();
   };

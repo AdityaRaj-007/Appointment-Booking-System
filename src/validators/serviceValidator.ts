@@ -6,3 +6,23 @@ export const createServiceSchema = z.object({
   type: z.enum(Type),
   durationMinutes: z.number().min(30).max(120),
 });
+
+export const setServiceAvailabilitySchema = z.object({
+  dayOfWeek: z.number(),
+  startTime: z
+    .string()
+    .regex(
+      /^([01]\d|2[0-3]):[0-5]\d$/,
+      "Invalid time format. Expected HH:MM (24h)",
+    ),
+  endTime: z
+    .string()
+    .regex(
+      /^([01]\d|2[0-3]):[0-5]\d$/,
+      "Invalid time format. Expected HH:MM (24h)",
+    ),
+});
+
+export const getServiceSchema = z.object({
+  type: z.enum(Type),
+});
