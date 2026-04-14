@@ -17,6 +17,8 @@ export const authMiddleware = (
   if (typeof decoded === "string") {
     return res.status(401).json({ message: "Invalid token" });
   }
+
+  console.log(decoded);
   (req as any).email = decoded.email;
   (req as any).role = decoded.role;
   next();

@@ -1,6 +1,7 @@
 import express from "express";
 import authRouter from "./routers/authRouter";
 import serviceRouter from "./routers/serviceRouter";
+import appointmentRouter from "./routers/appointmentRouter";
 import { authMiddleware } from "./middlewares/authMiddleware";
 
 const app = express();
@@ -9,6 +10,7 @@ const PORT = 3000;
 
 app.use("/auth", authRouter);
 app.use("/services", authMiddleware, serviceRouter);
+app.use("/appointments", authMiddleware, appointmentRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is running on PORT: ${PORT}`);

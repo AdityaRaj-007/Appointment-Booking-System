@@ -13,7 +13,7 @@ export const validate =
       const bodyResult = schemas.body.safeParse(req.body);
       if (!bodyResult.success) {
         return res.status(400).json({
-          error: bodyResult.error.flatten(),
+          error: bodyResult.error.issues,
         });
       }
       req.body = bodyResult.data;
