@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { prisma } from "../utils/prismaClient";
 import { v4 as uuidv4 } from "uuid";
 import { Type } from "../generated/prisma/enums";
+import { minToTime, timeToMin } from "../utils/timeUtils";
 
 export const createService = async (req: Request, res: Response) => {
   const { name, type, durationMinutes } = req.body;
@@ -154,6 +155,9 @@ export const getServiceSlot = async (req: Request, res: Response) => {
     const { serviceId } = req.params;
     const { date } = res.locals.query;
 
+    //console.log("Service Id: ", serviceId);
+    //console.log("Date: ", date);
+
     if (!serviceId || typeof serviceId !== "string") {
       return res.status(400).json({ error: "Invalid service id." });
     }
@@ -162,12 +166,17 @@ export const getServiceSlot = async (req: Request, res: Response) => {
       where: { id: serviceId },
     });
 
+    //console.log("Service details: ", service);
+
     if (!service) {
       return res.status(404).json({ error: "Service not found." });
     }
 
     const todaysDateStr = new Date().toISOString().split("T")[0]!;
     const bookingDateStr = new Date(date).toISOString().split("T")[0]!;
+
+    //console.log("Today's date string: ", todaysDateStr);
+    //console.log("Booking date string: ", bookingDateStr);
 
     if (bookingDateStr < todaysDateStr) {
       return res
@@ -177,9 +186,13 @@ export const getServiceSlot = async (req: Request, res: Response) => {
 
     const dayOfSlot = new Date(date).getDay();
 
+    //console.log("Day of slot for serevice: ", dayOfSlot);
+
     const availabilities = await prisma.availability.findMany({
       where: { serviceId, dayOfWeek: dayOfSlot },
     });
+
+    //console.log("Availabilites on the day: ", availabilities);
 
     if (!availabilities) {
       return res
@@ -187,9 +200,13 @@ export const getServiceSlot = async (req: Request, res: Response) => {
         .json({ error: "Service not available of this day." });
     }
 
+    const todaysDate = new Date(date);
+
     const bookedAppointment = await prisma.appointment.findMany({
-      where: { serviceId, date, status: "BOOKED" },
+      where: { serviceId, date: todaysDate, status: "BOOKED" },
     });
+
+    //console.log("Booked appointments for the day: ", bookedAppointment);
 
     const availableSlots = [];
 
@@ -200,13 +217,11 @@ export const getServiceSlot = async (req: Request, res: Response) => {
     const curTimeInMin = today.getHours() * 60 + today.getMinutes();
 
     for (const avail of availabilities) {
-      const availStartTime = new Date(avail.startTime);
-      const availEndTime = new Date(avail.endTime);
+      const availStartTimeMin = timeToMin(avail.startTime);
+      const availEndTimeMin = timeToMin(avail.endTime);
 
-      const availStartTimeMin =
-        availStartTime.getHours() * 60 + availStartTime.getMinutes();
-      const availEndTimeMin =
-        availEndTime.getHours() * 60 + availEndTime.getMinutes();
+      //console.log(availStartTimeMin);
+      //console.log(availEndTimeMin);
 
       for (
         let time = availStartTimeMin;
@@ -222,13 +237,8 @@ export const getServiceSlot = async (req: Request, res: Response) => {
 
         const overlappingAppointments = bookedAppointment.some(
           (appointment) => {
-            const apptStartTime = new Date(appointment.startTime);
-            const apptEndTime = new Date(appointment.endTime);
-
-            const apptStartTimeInMin =
-              apptStartTime.getHours() * 60 + apptStartTime.getMinutes();
-            const apptEndTimeInMin =
-              apptEndTime.getHours() * 60 + apptEndTime.getMinutes();
+            const apptStartTimeInMin = timeToMin(appointment.startTime);
+            const apptEndTimeInMin = timeToMin(appointment.endTime);
 
             return (
               Math.max(apptStartTimeInMin, slotStartTime) <
@@ -237,19 +247,11 @@ export const getServiceSlot = async (req: Request, res: Response) => {
           },
         );
 
+        //console.log(overlappingAppointments);
+
         if (!overlappingAppointments) {
-          const startTime =
-            Math.floor(slotStartTime / 60)
-              .toString()
-              .padStart(2, "0") +
-            ":" +
-            (slotStartTime % 60).toString().padStart(2, "0");
-          const endTime =
-            Math.floor(slotEndTime / 60)
-              .toString()
-              .padStart(2, "0") +
-            ":" +
-            (slotEndTime % 60).toString().padStart(2, "0");
+          const startTime = minToTime(slotStartTime);
+          const endTime = minToTime(slotEndTime);
 
           availableSlots.push({
             slotId: `${serviceId}_${date}_${startTime}`,
@@ -259,7 +261,12 @@ export const getServiceSlot = async (req: Request, res: Response) => {
         }
       }
     }
+
+    //console.log(availableSlots);
+
+    return res.status(200).json({ serviceId, date, slots: availableSlots });
   } catch (err) {
+    console.log("Error occurred while fetching slots: ", err);
     return res.status(500).json({ error: "Internal server error." });
   }
 };
