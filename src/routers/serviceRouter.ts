@@ -2,12 +2,14 @@ import { Router } from "express";
 import {
   createService,
   getAllServicesByType,
+  getServiceSlot,
   setServiceAvailability,
 } from "../controllers/serviceController";
 import { validate } from "../middlewares/validationMiddleware";
 import {
   createServiceSchema,
   getServiceSchema,
+  getServiceSlotSchema,
   setServiceAvailabilitySchema,
 } from "../validators/serviceValidator";
 
@@ -20,5 +22,10 @@ router.post(
   setServiceAvailability,
 );
 router.get("/", validate({ query: getServiceSchema }), getAllServicesByType);
+router.get(
+  "/:serviceId/slots",
+  validate({ query: getServiceSlotSchema }),
+  getServiceSlot,
+);
 
 export default router;

@@ -26,3 +26,7 @@ export const setServiceAvailabilitySchema = z.object({
 export const getServiceSchema = z.object({
   type: z.enum(Type),
 });
+
+export const getServiceSlotSchema = z.object({
+  date: z.date(),
+});

@@ -148,3 +148,118 @@ export const getAllServicesByType = async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Internal server error." });
   }
 };
+
+export const getServiceSlot = async (req: Request, res: Response) => {
+  try {
+    const { serviceId } = req.params;
+    const { date } = res.locals.query;
+
+    if (!serviceId || typeof serviceId !== "string") {
+      return res.status(400).json({ error: "Invalid service id." });
+    }
+
+    const service = await prisma.service.findUnique({
+      where: { id: serviceId },
+    });
+
+    if (!service) {
+      return res.status(404).json({ error: "Service not found." });
+    }
+
+    const todaysDateStr = new Date().toISOString().split("T")[0]!;
+    const bookingDateStr = new Date(date).toISOString().split("T")[0]!;
+
+    if (bookingDateStr < todaysDateStr) {
+      return res
+        .status(400)
+        .json({ error: "Booking for past date is not possible." });
+    }
+
+    const dayOfSlot = new Date(date).getDay();
+
+    const availabilities = await prisma.availability.findMany({
+      where: { serviceId, dayOfWeek: dayOfSlot },
+    });
+
+    if (!availabilities) {
+      return res
+        .status(400)
+        .json({ error: "Service not available of this day." });
+    }
+
+    const bookedAppointment = await prisma.appointment.findMany({
+      where: { serviceId, date, status: "BOOKED" },
+    });
+
+    const availableSlots = [];
+
+    const serviceDuration = service.durationMinutes;
+
+    const today = new Date();
+    const bookingDate = new Date(date);
+    const curTimeInMin = today.getHours() * 60 + today.getMinutes();
+
+    for (const avail of availabilities) {
+      const availStartTime = new Date(avail.startTime);
+      const availEndTime = new Date(avail.endTime);
+
+      const availStartTimeMin =
+        availStartTime.getHours() * 60 + availStartTime.getMinutes();
+      const availEndTimeMin =
+        availEndTime.getHours() * 60 + availEndTime.getMinutes();
+
+      for (
+        let time = availStartTimeMin;
+        time + serviceDuration <= availEndTimeMin;
+        time += serviceDuration
+      ) {
+        if (todaysDateStr === bookingDateStr && time <= curTimeInMin) {
+          continue;
+        }
+
+        const slotStartTime = time;
+        const slotEndTime = time + serviceDuration;
+
+        const overlappingAppointments = bookedAppointment.some(
+          (appointment) => {
+            const apptStartTime = new Date(appointment.startTime);
+            const apptEndTime = new Date(appointment.endTime);
+
+            const apptStartTimeInMin =
+              apptStartTime.getHours() * 60 + apptStartTime.getMinutes();
+            const apptEndTimeInMin =
+              apptEndTime.getHours() * 60 + apptEndTime.getMinutes();
+
+            return (
+              Math.max(apptStartTimeInMin, slotStartTime) <
+              Math.min(apptEndTimeInMin, slotEndTime)
+            );
+          },
+        );
+
+        if (!overlappingAppointments) {
+          const startTime =
+            Math.floor(slotStartTime / 60)
+              .toString()
+              .padStart(2, "0") +
+            ":" +
+            (slotStartTime % 60).toString().padStart(2, "0");
+          const endTime =
+            Math.floor(slotEndTime / 60)
+              .toString()
+              .padStart(2, "0") +
+            ":" +
+            (slotEndTime % 60).toString().padStart(2, "0");
+
+          availableSlots.push({
+            slotId: `${serviceId}_${date}_${startTime}`,
+            startTime: startTime,
+            endTime: endTime,
+          });
+        }
+      }
+    }
+  } catch (err) {
+    return res.status(500).json({ error: "Internal server error." });
+  }
+};
